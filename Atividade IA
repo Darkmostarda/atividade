@@ -1,4 +1,10 @@
 import random
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
 def step_bipolar(u):
     if u > 0:
         return 1
@@ -14,6 +20,7 @@ def neuronio(inputs, pesos, bias):
 def treinar(dados, saidas_desejadas, taxa_aprendizado=0.1, max_epocas=100):
     pesos = [random.uniform(-1, 1) for _ in range(len(dados[0]))]
     bias = 0.0
+    erros_por_epoca = []
 
     for epoca in range(max_epocas):
         erro_total = 0
@@ -27,31 +34,66 @@ def treinar(dados, saidas_desejadas, taxa_aprendizado=0.1, max_epocas=100):
                 pesos[i] += taxa_aprendizado * erro * entrada[i]
             bias += taxa_aprendizado * erro
 
+        erros_por_epoca.append(erro_total)
         print(f"Época {epoca+1} - Erro total: {erro_total}")
         if erro_total == 0:
             break
 
-    return pesos, bias
+    return pesos, bias, erros_por_epoca
 
-entradas = [
-    [1, -1, 1, 1],
-    [-1, -1, 1, -1],
-    [1, 1, -1, -1],
-    [-1, 1, -1, 1]
-]
+iris = datasets.load_iris()
+X = iris.data
+y = iris.target
 
-saidas = [1, -1, 1, -1]
+X = X[y != 2]
+y = y[y != 2]
 
-pesos_final, bias_final = treinar(entradas, saidas)
+X = X[:, [2, 3]]
+
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
+
+y = [1 if label == 1 else -1 for label in y]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+pesos_final, bias_final, erros_por_epoca = treinar(X_train, y_train)
 
 print("\nPesos finais:", pesos_final)
 print("Bias final:", bias_final)
 
 acertos = 0
-for entrada, saida_esperada in zip(entradas, saidas):
+for entrada, saida_esperada in zip(X_test, y_test):
     saida = neuronio(entrada, pesos_final, bias_final)
     if saida == saida_esperada:
         acertos += 1
 
-acuracia = (acertos / len(entradas)) * 100
-print(f"Acurácia final: {acuracia:.2f}%")
+acuracia = (acertos / len(X_test)) * 100
+print(f"Acurácia no teste: {acuracia:.2f}%")
+
+def plot_decision_boundary(X, y, pesos, bias):
+    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200),
+                         np.linspace(y_min, y_max, 200))
+
+    grid = np.c_[xx.ravel(), yy.ravel()]
+    Z = np.array([neuronio(ponto, pesos, bias) for ponto in grid])
+    Z = Z.reshape(xx.shape)
+
+    plt.contourf(xx, yy, Z, cmap=plt.cm.Paired, alpha=0.8)
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.Paired, edgecolors='k')
+    plt.xlabel('Pétala comprimento (normalizado)')
+    plt.ylabel('Pétala largura (normalizado)')
+    plt.title('Fronteira de Decisão do Perceptron')
+    plt.show()
+
+plot_decision_boundary(np.array(X_test), y_test, pesos_final, bias_final)
+
+plt.figure(figsize=(10, 5))
+plt.plot(erros_por_epoca, color='blue', marker='o')
+plt.title('Erro por Época')
+plt.xlabel('Época')
+plt.ylabel('Erro Total')
+plt.grid(True)
+plt.show()
