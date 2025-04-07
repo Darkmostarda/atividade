@@ -1,0 +1,57 @@
+import random
+def step_bipolar(u):
+    if u > 0:
+        return 1
+    elif u == 0:
+        return 0
+    else:
+        return -1
+
+def neuronio(inputs, pesos, bias):
+    u = sum(x * w for x, w in zip(inputs, pesos)) + bias
+    return step_bipolar(u)
+
+def treinar(dados, saidas_desejadas, taxa_aprendizado=0.1, max_epocas=100):
+    pesos = [random.uniform(-1, 1) for _ in range(len(dados[0]))]
+    bias = 0.0
+
+    for epoca in range(max_epocas):
+        erro_total = 0
+        for entrada, saida_esperada in zip(dados, saidas_desejadas):
+            u = sum(x * w for x, w in zip(entrada, pesos)) + bias
+            saida = step_bipolar(u)
+            erro = saida_esperada - saida
+            erro_total += abs(erro)
+
+            for i in range(len(pesos)):
+                pesos[i] += taxa_aprendizado * erro * entrada[i]
+            bias += taxa_aprendizado * erro
+
+        print(f"Época {epoca+1} - Erro total: {erro_total}")
+        if erro_total == 0:
+            break
+
+    return pesos, bias
+
+entradas = [
+    [1, -1, 1, 1],
+    [-1, -1, 1, -1],
+    [1, 1, -1, -1],
+    [-1, 1, -1, 1]
+]
+
+saidas = [1, -1, 1, -1]
+
+pesos_final, bias_final = treinar(entradas, saidas)
+
+print("\nPesos finais:", pesos_final)
+print("Bias final:", bias_final)
+
+acertos = 0
+for entrada, saida_esperada in zip(entradas, saidas):
+    saida = neuronio(entrada, pesos_final, bias_final)
+    if saida == saida_esperada:
+        acertos += 1
+
+acuracia = (acertos / len(entradas)) * 100
+print(f"Acurácia final: {acuracia:.2f}%")
